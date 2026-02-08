@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TripCraft – AI Travel Planner Prototype</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --primary: #2563eb;
+      --primary-light: #dbeafe;
+      --primary-dark: #1d4ed8;
+      --text: #1e293b;
+      --text-secondary: #64748b;
+      --border: #e2e8f0;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-orange: #f59e0b;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    /* ── SCREEN SYSTEM ── */
+    .screen { display: none; height: 100vh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── NAVIGATION BAR ── */
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .navbar-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+    .navbar-logo span { color: var(--text); }
+    .navbar-links { display: flex; gap: 20px; align-items: center; }
+    .navbar-links a {
+      font-size: 14px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .navbar-links a:hover { color: var(--primary); }
+    .navbar-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── SCREEN 1: CHAT BRAINSTORM ── */
+    .brainstorm-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      gap: 8px;
+    }
+    .brainstorm-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .brainstorm-subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+    }
+    .brainstorm-chat-box {
+      width: 100%;
+      max-width: 640px;
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .brainstorm-messages {
+      padding: 24px;
+      max-height: 340px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .msg.user { flex-direction: row-reverse; }
+    .msg-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .msg.ai .msg-avatar { background: var(--primary-light); color: var(--primary); }
+    .msg.user .msg-avatar { background: #f0fdf4; color: var(--accent-green); }
+    .msg-bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      max-width: 80%;
+    }
+    .msg.ai .msg-bubble { background: var(--bg); color: var(--text); }
+    .msg.user .msg-bubble { background: var(--primary); color: #fff; }
+
+    .brainstorm-input-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+    }
+    .brainstorm-input-row input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: var(--text);
+      background: transparent;
+    }
+    .brainstorm-input-row input::placeholder { color: #cbd5e1; }
+    .send-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .send-btn:hover { background: var(--primary-dark); }
+    .send-btn svg { width: 16px; height: 16px; }
+
+    .start-project-row {
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .start-project-btn {
+      padding: 12px 32px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .start-project-btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .start-project-btn svg { width: 18px; height: 18px; }
+
+    /* ── SCREEN 2 & 3: PROJECT VIEW ── */
+    .project-view {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* LEFT: Chat Panel */
+    .chat-panel {
+      width: 400px;
+      min-width: 400px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chat-header .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .chat-input-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+    }
+    .chat-input-row input {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .chat-input-row input:focus { border-color: var(--primary); }
+
+    /* Proposal card in chat */
+    .proposal-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-top: 4px;
+    }
+    .proposal-card-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .proposal-card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .proposal-card-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    .proposal-card-detail strong { color: var(--text); }
+    .proposal-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .btn-accept, .btn-refuse {
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-accept { background: var(--accent-green); color: #fff; }
+    .btn-accept:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-refuse { background: #fee2e2; color: var(--accent-red); }
+    .btn-refuse:hover { opacity: 0.8; }
+
+    /* RIGHT: Canvas */
+    .canvas-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+    .canvas-header {
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .canvas-header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .canvas-header-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .canvas-header-dates {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 3px;
+    }
+    .view-toggle button {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: transparent;
+      color: var(--text-secondary);
+      transition: background 0.15s, color 0.15s;
+    }
+    .view-toggle button.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+
+    .canvas-body {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-x: auto;
+      overflow-y: auto;
+      display: flex;
+      gap: 0;
+    }
+
+    /* Day column */
+    .day-column {
+      min-width: 220px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+    }
+    .day-column:last-child { border-right: none; }
+    .day-column-header {
+      padding: 12px 14px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .day-column-header .day-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .day-column-header .day-date {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    .day-events {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 340px;
+      position: relative;
+    }
+
+    .day-lodging {
+      padding: 10px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .lodging-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .lodging-card {
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #92400e;
+      font-weight: 500;
+    }
+    .lodging-empty {
+      font-size: 12px;
+      color: #cbd5e1;
+      font-style: italic;
+    }
+
+    /* Event cards on canvas */
+    .event-card {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      border-left: 3px solid var(--primary);
+      cursor: pointer;
+      transition: box-shadow 0.15s, transform 0.15s;
+    }
+    .event-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+    .event-card.type-meal { border-left-color: var(--accent-orange); }
+    .event-card.type-visit { border-left-color: var(--primary); }
+    .event-card.type-transit { border-left-color: #8b5cf6; }
+    .event-card.type-sport { border-left-color: var(--accent-green); }
+    .event-card .event-time {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .event-card .event-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    .event-card .event-type-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .event-card.type-visit .event-type-badge { background: var(--primary-light); color: var(--primary); }
+    .event-card.type-meal .event-type-badge { background: #fef3c7; color: #b45309; }
+    .event-card.type-transit .event-type-badge { background: #ede9fe; color: #7c3aed; }
+    .event-card.type-sport .event-type-badge { background: #d1fae5; color: #059669; }
+
+    /* Empty state */
+    .canvas-empty-state {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--text-secondary);
+    }
+    .canvas-empty-state svg { width: 48px; height: 48px; opacity: 0.3; }
+    .canvas-empty-state p {
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .canvas-empty-state span {
+      font-size: 13px;
+    }
+
+    /* Animation for event appearing */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .event-card.animate-in {
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Accepted badge */
+    .accepted-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #d1fae5;
+      color: #059669;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    /* Screen indicator */
+    .screen-indicator {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      background: rgba(30,41,59,0.9);
+      padding: 8px 16px;
+      border-radius: 20px;
+      z-index: 100;
+    }
+    .screen-indicator .dot-indicator {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      transition: background 0.3s;
+    }
+    .screen-indicator .dot-indicator.active { background: #fff; }
+    .screen-indicator .screen-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      margin-left: 8px;
+    }
+
+    /* ── TRANSITION OVERLAY ── */
+    .transition-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      z-index: 50;
+      pointer-events: none;
+      transition: background 0.3s;
+    }
+    .transition-overlay.active {
+      background: rgba(255,255,255,0.95);
+      pointer-events: all;
+    }
+
+    /* ── Trip card modal ── */
+    .trip-card-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+    }
+    .trip-card-modal.active { display: flex; }
+    .trip-card-content {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 32px;
+      width: 520px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    .trip-card-content h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .trip-card-content .tc-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+    .tc-field {
+      margin-bottom: 16px;
+    }
+    .tc-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .tc-field input, .tc-field textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .tc-field input:focus, .tc-field textarea:focus { border-color: var(--primary); }
+    .tc-field textarea { resize: vertical; min-height: 60px; }
+    .tc-field .prefilled {
+      background: #f8fafc;
+      color: var(--text);
+    }
+    .tc-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .tc-actions button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s;
+    }
+    .tc-btn-secondary { background: var(--bg); color: var(--text); }
+    .tc-btn-primary { background: var(--primary); color: #fff; }
+    .tc-btn-primary:hover { background: var(--primary-dark); }
+
+    /* Typing indicator */
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 8px 0;
+    }
+    .typing-indicator .typing-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      opacity: 0.4;
+      animation: typingBounce 1.2s infinite;
+    }
+    .typing-indicator .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ SCREEN 1: BRAINSTORM CHAT ═══════════ -->
+  <div id="screen1" class="screen active">
+    <nav class="navbar">
+      <div class="navbar-logo">Trip<span>Craft</span></div>
+      <div class="navbar-links">
+        <a href="#">Explore</a>
+        <a href="#">My Trips</a>
+        <div class="navbar-avatar">R</div>
+      </div>
+    </nav>
+    <div class="brainstorm-container">
+      <div class="brainstorm-title">Where to next?</div>
+      <div class="brainstorm-subtitle">Brainstorm your next trip with AI, then turn it into a plan.</div>
+      <div class="brainstorm-chat-box">
+        <div class="brainstorm-messages" id="brainstormMessages">
+          <div class="msg user">
+            <div class="msg-avatar">R</div>
+            <div class="msg-bubble">I want to plan a 4-day trip to Rome with my partner in June. We love food, history, and want a mix of popular sights and hidden gems.</div>
+          </div>
+          <div class="msg ai">
+            <div class="msg-avatar">TC</div>
+            <div class="msg-bubble">Rome in June sounds wonderful! With 4 days you can cover the major landmarks — Colosseum, Vatican, Pantheon — while also exploring neighborhoods like Trastevere and Testaccio for authentic food and local atmosphere. Would you like me to help you build a day-by-day itinerary? I can set up a <strong>Trip Project</strong> so we can organize everything visually.</div>
+          </div>
+          <div class="msg user">
+            <div class="msg-avatar">R</div>
+            <div class="msg-bubble">Yes, let's do it! Set up the project.</div>
+          </div>
+        </div>
+        <div class="start-project-row">
+          <button class="start-project-btn" id="startProjectBtn" onclick="goToScreen2()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Start Trip Project
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TRIP CARD MODAL (between Screen 1 → 2) ═══════════ -->
+  <div class="trip-card-modal" id="tripCardModal">
+    <div class="trip-card-content">
+      <h2>Trip Card</h2>
+      <p class="tc-sub">Fill in what you know. You can always change this later.</p>
+      <div class="tc-field">
+        <label>Destination</label>
+        <input type="text" value="Rome, Italy" class="prefilled" />
+      </div>
+      <div class="tc-field">
+        <label>Dates</label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" value="Jun 12, 2025" class="prefilled" style="flex:1" />
+          <input type="text" value="Jun 15, 2025" class="prefilled" style="flex:1" />
+        </div>
+      </div>
+      <div class="tc-field">
+        <label>Who is traveling?</label>
+        <input type="text" value="Couple (2 adults)" class="prefilled" />
+      </div>
+      <div class="tc-field">
+        <label>Budget range</label>
+        <input type="text" value="~€2,000 total" class="prefilled" />
+      </div>
+      <div class="tc-field">
+        <label>Interests & vibes</label>
+        <textarea class="prefilled">Food and local cuisine, historical landmarks, hidden gems, relaxed mornings, lively evenings</textarea>
+      </div>
+      <div class="tc-field">
+        <label>Special requirements</label>
+        <input type="text" placeholder="e.g. accessibility needs, dietary restrictions..." />
+      </div>
+      <div class="tc-actions">
+        <button class="tc-btn-primary" onclick="goToProjectView()">Create Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ SCREEN 2: PROJECT VIEW (empty + proposal) ═══════════ -->
+  <div id="screen2" class="screen">
+    <nav class="navbar">
+      <div class="navbar-logo">Trip<span>Craft</span></div>
+      <div class="navbar-links">
+        <a href="#" onclick="goToScreen1(); return false;" style="display:flex; align-items:center; gap:4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          My Trips
+        </a>
+        <div class="navbar-avatar">R</div>
+      </div>
+    </nav>
+    <div class="project-view">
+      <!-- LEFT: Chat -->
+      <div class="chat-panel">
+        <div class="chat-header">
+          <div class="dot"></div>
+          TripCraft AI
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg ai fade-in">
+            <div class="msg-avatar">TC</div>
+            <div class="msg-bubble">
+              Your trip project for <strong>Rome</strong> is ready! I've set up 4 days (Jun 12–15). The canvas on the right is empty — let's start filling it in.<br><br>
+              For Day 1, since you'll likely arrive and want to settle in, how about starting with a visit to the <strong>Colosseum & Roman Forum</strong> in the afternoon, followed by dinner in Monti? Want me to add that?
+            </div>
+          </div>
+          <div class="msg user fade-in">
+            <div class="msg-avatar">R</div>
+            <div class="msg-bubble">Yes, add the Colosseum visit for the afternoon!</div>
+          </div>
+          <div class="msg ai fade-in" id="proposalMessage">
+            <div class="msg-avatar">TC</div>
+            <div>
+              <div class="msg-bubble" style="margin-bottom:8px;">Great choice! Here's what I'd add to Day 1:</div>
+              <div class="proposal-card" id="proposalCard">
+                <div class="proposal-card-header">Proposed Event</div>
+                <div class="proposal-card-title">Colosseum & Roman Forum</div>
+                <div class="proposal-card-detail"><strong>Day:</strong> Thu, Jun 12</div>
+                <div class="proposal-card-detail"><strong>Time:</strong> 14:00 – 17:30</div>
+                <div class="proposal-card-detail"><strong>Type:</strong> Visit / Ticketed Attraction</div>
+                <div class="proposal-card-detail"><strong>Notes:</strong> Book skip-the-line tickets in advance. Audio guide recommended.</div>
+                <div class="proposal-card-detail" style="margin-top: 6px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <strong style="color:#b45309;"> Requires booking</strong>
+                </div>
+                <div class="proposal-actions" id="proposalActions">
+                  <button class="btn-accept" onclick="acceptProposal()">Accept</button>
+                  <button class="btn-refuse" onclick="refuseProposal()">Refuse</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" placeholder="Ask about your trip..." />
+          <button class="send-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- RIGHT: Canvas -->
+      <div class="canvas-panel">
+        <div class="canvas-header">
+          <div class="canvas-header-left">
+            <div>
+              <div class="canvas-header-title">Rome Trip</div>
+              <div class="canvas-header-dates">Jun 12 – Jun 15, 2025 · 4 days</div>
+            </div>
+          </div>
+          <div class="view-toggle">
+            <button class="active">3 days</button>
+            <button>7 days</button>
+            <button>1 day</button>
+          </div>
+        </div>
+        <div class="canvas-body" id="canvasBody">
+          <!-- Day 1 -->
+          <div class="day-column">
+            <div class="day-column-header">
+              <div class="day-name">Thursday</div>
+              <div class="day-date">Jun 12</div>
+            </div>
+            <div class="day-events" id="day1Events">
+              <!-- Events will be inserted here -->
+            </div>
+            <div class="day-lodging">
+              <div class="lodging-label">Night Accommodation</div>
+              <div class="lodging-empty">Not set</div>
+            </div>
+          </div>
+          <!-- Day 2 -->
+          <div class="day-column">
+            <div class="day-column-header">
+              <div class="day-name">Friday</div>
+              <div class="day-date">Jun 13</div>
+            </div>
+            <div class="day-events">
+            </div>
+            <div class="day-lodging">
+              <div class="lodging-label">Night Accommodation</div>
+              <div class="lodging-empty">Not set</div>
+            </div>
+          </div>
+          <!-- Day 3 -->
+          <div class="day-column">
+            <div class="day-column-header">
+              <div class="day-name">Saturday</div>
+              <div class="day-date">Jun 14</div>
+            </div>
+            <div class="day-events">
+            </div>
+            <div class="day-lodging">
+              <div class="lodging-label">Night Accommodation</div>
+              <div class="lodging-empty">Not set</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSITION OVERLAY -->
+  <div class="transition-overlay" id="transitionOverlay"></div>
+
+  <!-- SCREEN INDICATOR -->
+  <div class="screen-indicator" id="screenIndicator">
+    <div class="dot-indicator active" id="ind1"></div>
+    <div class="dot-indicator" id="ind2"></div>
+    <div class="dot-indicator" id="ind3"></div>
+    <span class="screen-label" id="screenLabel">Screen 1: Brainstorm Chat</span>
+  </div>
+
+  <script>
+    let currentScreen = 1;
+
+    function setIndicator(n) {
+      document.getElementById('ind1').classList.toggle('active', n === 1);
+      document.getElementById('ind2').classList.toggle('active', n === 2);
+      document.getElementById('ind3').classList.toggle('active', n === 3);
+      const labels = {
+        1: 'Screen 1: Brainstorm Chat',
+        2: 'Screen 2: Project View — Event Proposal',
+        3: 'Screen 3: Project View — Event Accepted'
+      };
+      document.getElementById('screenLabel').textContent = labels[n];
+    }
+
+    function transition(callback) {
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.classList.add('active');
+      setTimeout(() => {
+        callback();
+        setTimeout(() => overlay.classList.remove('active'), 300);
+      }, 300);
+    }
+
+    function showScreen(n) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen' + n).classList.add('active');
+      currentScreen = n;
+      setIndicator(n);
+    }
+
+    function goToScreen1() {
+      transition(() => showScreen(1));
+    }
+
+    function goToScreen2() {
+      // Show trip card modal first
+      document.getElementById('tripCardModal').classList.add('active');
+    }
+
+    function goToProjectView() {
+      document.getElementById('tripCardModal').classList.remove('active');
+      transition(() => showScreen(2));
+    }
+
+    function acceptProposal() {
+      // Hide action buttons, show accepted badge
+      const actions = document.getElementById('proposalActions');
+      actions.innerHTML = '<div class="accepted-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Added to itinerary</div>';
+
+      // Add event to canvas Day 1
+      const day1 = document.getElementById('day1Events');
+      const eventCard = document.createElement('div');
+      eventCard.className = 'event-card type-visit animate-in';
+      eventCard.innerHTML = `
+        <div class="event-time">14:00 – 17:30</div>
+        <div class="event-name">Colosseum & Roman Forum</div>
+        <div class="event-type-badge">Visit</div>
+        <div style="margin-top:6px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px;"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span style="font-size:11px; color:#b45309; font-weight:600;">Needs booking</span>
+        </div>
+      `;
+      day1.appendChild(eventCard);
+
+      // Add follow-up message in chat
+      setTimeout(() => {
+        const chatMessages = document.getElementById('chatMessages');
+        const followUp = document.createElement('div');
+        followUp.className = 'msg ai fade-in';
+        followUp.innerHTML = `
+          <div class="msg-avatar">TC</div>
+          <div class="msg-bubble">
+            Done! The <strong>Colosseum & Roman Forum</strong> visit is now on your Day 1 itinerary.
+            <br><br>For the evening, I'd suggest dinner in the <strong>Monti neighborhood</strong> — it's a short walk from the Forum and has amazing trattorias. Want me to add a dinner event, or shall we move on to planning Day 2?
+          </div>
+        `;
+        chatMessages.appendChild(followUp);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 600);
+
+      // Update indicator to screen 3
+      setIndicator(3);
+    }
+
+    function refuseProposal() {
+      const actions = document.getElementById('proposalActions');
+      actions.innerHTML = '<div style="font-size:12px; color: var(--accent-red); font-weight:500; padding: 4px 0;">Event not added. Let\'s discuss alternatives.</div>';
+
+      setTimeout(() => {
+        const chatMessages = document.getElementById('chatMessages');
+        const followUp = document.createElement('div');
+        followUp.className = 'msg ai fade-in';
+        followUp.innerHTML = `
+          <div class="msg-avatar">TC</div>
+          <div class="msg-bubble">
+            No problem! Would you prefer a different time, or would you rather do something else on Day 1? Maybe start with a lighter activity like exploring <strong>Trastevere</strong> and save the Colosseum for Day 2 when you're more rested?
+          </div>
+        `;
+        chatMessages.appendChild(followUp);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 500);
+    }
+  </script>
+</body>
+</html>
